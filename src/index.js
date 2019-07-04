@@ -1,106 +1,124 @@
 // import { map, reduce, compose } from 'maducer';;
 
-const CORES = navigator.hardwareConcurrency;
+// const CORES = navigator.hardwareConcurrency;
+const CORES = 1;
 
 const BITS = {
-  CHANGE: 0
+    CHANGE: 0,
 };
 
 const HEADER_SIZE = Object.keys(BITS).length;
 
-export const init = (worker, ...args) => {
-  const params = args.map(JSON.stringify);
-  const blob = new Blob([`(${worker.toString()})(${params})`], {
-    type: "application/javascript"
-  });
-  return URL.createObjectURL(blob);
+const init = (worker, ...args) => {
+    const params = args.map(JSON.stringify);
+    const blob = new Blob([`(${worker.toString()})(${params})`], {
+        type: 'application/javascript',
+    });
+    return URL.createObjectURL(blob);
 };
 
 function spawn(body, args = [], workerCount = CORES) {
-  return new Array(workerCount).fill(null).map((_, index) => {
-    const workerId = index + 1;
-    const url = init(body, [workerId, workerCount, ...args]);
-    return new Worker(url);
-  });
+    return new Array(workerCount).fill(null).map((_, index) => {
+        const url = init(body, ...args);
+        return new Worker(url);
+    });
 }
 
 function partition(data) {
-  const chunkSize = Math.ceil(data.length / CORES);
-  const initialState = { buffer: [], chunks: [] };
-  const encoder = new TextEncoder();
+    const chunkSize = Math.ceil(data.length / CORES);
+    const initialState = { buffer: [], chunks: [] };
+    const encoder = new TextEncoder();
 
-  const { chunks } = data.reduce((accum, datum, index) => {
-    const isChunkEnd =
-      (index % chunkSize === 0 && index !== 0) || index === data.length - 1;
-    const buffer = [...accum.buffer, datum];
+    const { chunks } = data.reduce((accum, datum, index) => {
+        const isChunkEnd =
+            (index % chunkSize === 0 && index !== 0) ||
+            index === data.length - 1;
+        const buffer = [...accum.buffer, datum];
 
-    if (!isChunkEnd) return { ...accum, buffer };
+        if (!isChunkEnd) return { ...accum, buffer };
 
-    // Create each segment for the shared array buffer.
-    const segments = {
-      header: new Uint8Array(Uint8Array.BYTES_PER_ELEMENT * HEADER_SIZE),
-      data: encoder.encode(buffer)
-    };
+        // Create each segment for the shared array buffer.
+        const segments = {
+            header: new Uint8Array(Uint8Array.BYTES_PER_ELEMENT * HEADER_SIZE),
+            data: encoder.encode(buffer.join('\n')),
+        };
 
-    // Construct the SAB and add the header size to the payload size.
-    const sab = new SharedArrayBuffer(
-      segments.header.length + segments.data.length
-    );
+        // Construct the SAB and add the header size to the payload size.
+        const sab = new SharedArrayBuffer(
+            segments.header.length + segments.data.length,
+        );
 
-    // Write the data to the SAB for each worker to handle a chunk.
-    const chunk = new Uint8Array(sab);
-    chunk.set(segments.header);
-    chunk.set(segments.data, HEADER_SIZE);
+        // Merge the header and payload into the SAB for each worker to handle a chunk.
+        const chunk = new Uint8Array(sab);
+        chunk.set(segments.header);
+        chunk.set(segments.data, HEADER_SIZE);
 
-    return {
-      ...accum,
-      buffer: [],
-      chunks: [...accum.chunks, chunk]
-    };
-  }, initialState);
+        return {
+            ...accum,
+            buffer: [],
+            chunks: [...accum.chunks, chunk],
+        };
+    }, initialState);
 
-  return chunks;
+    return chunks;
 }
 
-function map(mapper) {
-  function worker(workerId, workerCount, mapper) {
-    // console.log(workerId, workerCount);
-    const apply = new Function(`return ${mapper}`)();
-    self.addEventListener("message", ({ data }) => {
-      console.log(data);
-      //   const array = new Uint32Array(data);
-      //   const a = Uint8Array.from(Array.from(new Int32Array(data)));
-      //   console.log(new TextDecoder().decode(a));
+function dispatch(workers, chunks) {
+    return Promise.all(
+        chunks.map((chunk, index) => {
+            return new Promise(resolve => {
+                const worker = workers[index];
+                worker.postMessage(chunk);
+                worker.addEventListener('message', ({ data }) => resolve(data));
+            });
+        }),
+    );
+}
 
-      // console.log(new TextDecoder().decode(array))
-    });
-  }
+function main(mapper) {
+    function worker(mapper, HEADER_SIZE) {
+        const apply = new Function(`return ${mapper}`)();
+        const decoder = new TextDecoder();
 
-  // Spawn each of the workers based on CPU cores available.
-  const workers = spawn(worker, [mapper.toString()]);
+        self.addEventListener('message', event => {
+            const payload = new Uint8Array(event.data.length);
+            payload.set(event.data);
+            const collection = decoder
+                .decode(payload.slice(HEADER_SIZE))
+                .split('\n');
+            const result = collection.map(apply);
+            self.postMessage(result);
+        });
+    }
 
-  return data => {
-    // [change, ...payload]
+    // Spawn each of the workers based on CPU cores available.
+    const workers = spawn(worker, [mapper.toString(), HEADER_SIZE]);
 
-    const chunks = partition(data);
+    return async data => {
+        // Partition the data based on the number of CPU cores.
+        const chunks = partition(data);
 
-    // Dispatch the SABs to each of the spawned workers.
-    chunks.forEach((chunk, index) => {
-      const worker = workers[index];
-      worker.postMessage(chunk);
-    })
-  };
+        // Dispatch the SABs to each of the spawned workers.
+        return await dispatch(workers, chunks);
+    };
 }
 
 // -------
 
-async function main() {
-  const ageDoubled = map(value => {
-    return Number(value) * 2;
-  });
+async function start() {
+    const mapper = value => {
+        return Number(value);
+    };
 
-  const data = await fetch("./src/data.csv").then(r => r.text());
-  ageDoubled(data.split("\n"));
+    const ageDoubled = main(mapper);
+
+    const data = await fetch('./src/small-ints.csv').then(r => r.text());
+    console.time('a');
+    // console.log(data.split(',').map(num => Number(num)));
+    const result = await ageDoubled(data.split(','));
+    console.timeEnd('a');
+
+    console.log('result:', result);
 }
 
-main();
+start();
