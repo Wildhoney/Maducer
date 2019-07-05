@@ -1,4 +1,5 @@
 import resolve from 'rollup-plugin-node-resolve';
+import commonjs from 'rollup-plugin-commonjs';
 import babel from 'rollup-plugin-babel';
 import { terser } from 'rollup-plugin-terser';
 
@@ -20,9 +21,18 @@ module.exports = {
     ],
     plugins: [
         resolve(),
+
         babel({
             exclude: 'node_modules/**',
             runtimeHelpers: true,
+        }),
+        commonjs({
+            namedExports: {
+                include: 'node_modules/**',
+                'node_modules/styled-components/dist/styled-components.esm.js': [
+                    'createContext',
+                ],
+            },
         }),
         terser(),
     ],
