@@ -1,0 +1,21 @@
+language: node_js
+node_js: stable
+script:
+    - yarn
+    - yarn test
+    - yarn build
+
+after_success: yarn coverage
+
+before_install:
+    - 'sysctl kernel.unprivileged_userns_clone=1'
+    - 'export DISPLAY=:99.0'
+    - 'sh -e /etc/init.d/xvfb start'
+
+deploy:
+    provider: heroku
+    api_key:
+        secure: IDlpBmN2GpG7mBxFbfBdUxZE6PvoscOT9fiOwOzb4lk8tVrqNIQLsQmfIx8aQpPFMB6Q3sDQtMiUkqgTZXOx0QhvTCSsJDI3eXKFNbJSq6S8TtPUunO6gN+FAhhyU8aITeb87xbEZNYFOR2D+WGecZhCw2UrTOr6oRv/Qw/e8Ja89Yo/rs82t2+/0kQ2QYa8bb//s7Q9gDgxBcSYmCRJqqMdBUwYYAIdk0RpfhLzFyv2wndZga1ZAErPlBf8qF+8YGNVyq8U9ckp3dSECLxo50NBcqcQJ8RGh88zPr2uyCaAuDJCKYbPSIWJuTvCwoNOdmYI9B4iIa3QNIGiDu5+m0F5A4vkR6OhiXt5JhMf5yuF/D7ctPDuW3hdd4W1i8N/cKtqIr1C0d0zjrhHe5VnrPYoE/ogu1tS9+JLuVuv4WrJA4sckqGxSx1Sk4r93xQ+WpVt6NfWxGB1XoymNPP6dr9HibWzvIH5KoKgtdgFc/iGJgbvOKe6WEQ7+M1jar0paci4VB+0UPZntq3CjjSZtkHIOouRhOEMCcoeqqfr3L+8Hv0e3N8Xsya7yXEdATn8u0tBJMe4i5EnGw9BlSvQf4xMHmtd0icf6yNZrzUWQGnTIaTVnmC+HzfO9CHMQy0JXQZANMZxC25ayGwIG3btzprJjWvH4MA3hDOS9qwej/g=
+    app: maducer
+    on:
+        repo: Wildhoney/Maducer

@@ -1,0 +1,14 @@
+{
+    "parser": "babel-eslint",
+    "extends": ["standard", "prettier", "prettier/standard"],
+    "rules": {
+        "no-new-func": "off",
+    },
+    "globals": {
+        "Blob": true,
+        "fetch":true,
+        "self":true,
+        "SharedArrayBuffer": true,
+        "Worker": true
+    }
+}
