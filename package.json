@@ -1,6 +1,6 @@
 {
     "name": "maducer",
-    "version": "0.1.0",
+    "version": "0.2.0",
     "description": "An experimental map-reduce concurrency over web workers using shared array buffer for handling large datasets.",
     "main": "src/index.js",
     "repository": "git@github.com:Wildhoney/Maducer.git",
