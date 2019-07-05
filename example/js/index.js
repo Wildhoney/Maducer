@@ -1,5 +1,10 @@
 import maducer from 'maducer';
 
+// new Array(10_000_000)
+//     .fill(null)
+//     .map(() => Math.round(Math.random() * 1000))
+//     .join(',');
+
 async function main() {
     const mapper = a => Number(a);
     const reducer = (a, b) => (a > b ? a : b);
