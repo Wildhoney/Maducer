@@ -17,7 +17,11 @@ function spawn(body, args = []) {
 }
 
 function encode(data) {
-    const payload = new TextEncoder().encode(data);
+    const payload =
+        data instanceof ArrayBuffer
+            ? new Uint8Array(data)
+            : new TextEncoder().encode(data);
+
     const sharedBuffer = new SharedArrayBuffer(payload.length);
     const chunk = new Uint8Array(sharedBuffer);
     chunk.set(payload);
@@ -49,7 +53,7 @@ function worker(workerId, workerCount, delimiter, mapper, reducer) {
             .decode(data.slice(chunkStart, chunkEnd))
             .split(delimiter.decoded);
 
-            const result = collection
+        const result = collection
             .slice(1)
             .reduce((x, y) => reduce(x, map(y)), map(collection[0]));
 
