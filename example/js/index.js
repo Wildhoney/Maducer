@@ -1,6 +1,6 @@
 import maducer from 'maducer';
 
-// new Array(10_000_000)
+// new Array(26_500_000)
 //     .fill(null)
 //     .map(() => Math.round(Math.random() * 1000))
 //     .join(',');
@@ -11,6 +11,14 @@ async function main() {
     const compute = maducer(',', mapper, reducer);
     const data = await fetch('./data/dataset.csv').then(r => r.text());
 
+    console.log('running maducer...');
+    console.time('maducer');
+    const result_ = await compute(data);
+    console.timeEnd('maducer');
+    console.log('result:', result_);
+
+    console.log('---');
+
     console.log('running standard...');
     console.time('standard');
     const result = data
@@ -19,14 +27,6 @@ async function main() {
         .reduce(reducer);
     console.timeEnd('standard');
     console.log('result:', result);
-
-    console.log('---');
-
-    console.log('running maducer...');
-    console.time('maducer');
-    const result_ = await compute(data);
-    console.timeEnd('maducer');
-    console.log('result:', result_);
 }
 
 main();
