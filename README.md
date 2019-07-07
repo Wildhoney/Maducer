@@ -18,7 +18,9 @@
 
 ## Getting Started
 
-Maducer has a similar interface to the native implementation &ndash; define your mapping and reducing functions, and additionally instruct Maducer how to split your data into logical chunks. Maducer will distribute the concurrent map-reduce computation across *x* [web workers](https://developer.mozilla.org/en-US/docs/Web/API/Web_Workers_API/Using_web_workers) using [`SharedArrayBuffer`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/SharedArrayBuffer) where *x* is the amount of CPU cores available to the client.
+Maducer has a similar interface to the native implementation &ndash; define your mapping and reducing functions, and additionally instruct Maducer how to split your data into logical chunks.
+
+[![Edit Maducer](https://codesandbox.io/static/img/play-codesandbox.svg)](https://codesandbox.io/s/maducer-h3qds?fontsize=14)
 
 ```javascript
 // Configure how to map and reduce your data.
@@ -32,7 +34,9 @@ const data = await fetch('./dataset.csv').then(r => r.text());
 const delimiter = ',';
 
 // Put it all together and compute the highest value.
-const compute = maducer(',', mapper, reducer);
+const compute = maducer(delimiter, mapper, reducer);
 const result = await compute(data);
 console.log('Highest value is:', result);
 ```
+
+Maducer will distribute the concurrent map-reduce computation across *x* [web workers](https://developer.mozilla.org/en-US/docs/Web/API/Web_Workers_API/Using_web_workers) using [`SharedArrayBuffer`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/SharedArrayBuffer) where *x* is the amount of CPU cores available to the client.
