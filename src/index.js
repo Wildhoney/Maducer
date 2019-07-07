@@ -49,7 +49,10 @@ function worker(workerId, workerCount, delimiter, mapper, reducer) {
             .decode(data.slice(chunkStart, chunkEnd))
             .split(delimiter.decoded);
 
-        const result = collection.map(map).reduce(reduce);
+            const result = collection
+            .slice(1)
+            .reduce((x, y) => reduce(x, map(y)), map(collection[0]));
+
         self.postMessage(result);
     });
 
