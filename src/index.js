@@ -1,5 +1,7 @@
 const CORES = navigator.hardwareConcurrency || 4;
 
+const empty = '__null__';
+
 function init(worker, ...args) {
     const params = args.map(JSON.stringify);
     const blob = new Blob([`(${worker.toString()})(${params})`], {
@@ -42,13 +44,18 @@ function dispatch(workers, data) {
     );
 }
 
-function worker(workerId, workerCount, delimiter, mapper, reducer) {
+function worker(workerId, workerCount, empty, delimiter, mapper, reducer) {
     const map = new Function(`return ${mapper}`)();
     const reduce = new Function(`return ${reducer}`)();
 
     self.addEventListener('message', ({ data }) => {
-        const collection = getChunk(data).split(delimiter.decoded);
+        const chunk = getChunk(data);
 
+        if (chunk === null) {
+            return void self.postMessage(empty);
+        }
+
+        const collection = chunk.split(delimiter.decoded);
         const result = collection
             .slice(1)
             .reduce((x, y) => reduce(x, map(y)), map(collection[0]));
@@ -65,7 +72,7 @@ function worker(workerId, workerCount, delimiter, mapper, reducer) {
     }
 
     function getChunk(data) {
-        const chunkSize = Math.round(data.length / workerCount);
+        const chunkSize = Math.ceil(data.length / workerCount);
         const chunkStart = workerId * chunkSize;
         const chunkEnd = (workerId + 1) * chunkSize;
 
@@ -81,18 +88,19 @@ function worker(workerId, workerCount, delimiter, mapper, reducer) {
                     : getDelimiterIndex(data.slice(chunkEnd)),
         };
 
-        return new TextDecoder().decode(
-            data.slice(
-                chunkStart + chunkOffsets.start,
-                chunkEnd + chunkOffsets.end,
-            ),
+        const chunk = data.slice(
+            chunkStart + chunkOffsets.start,
+            chunkEnd + chunkOffsets.end,
         );
+        const decodedData = new TextDecoder().decode(chunk);
+        return chunk.length === 0 ? null : decodedData;
     }
 }
 
 export default function main(delimiter, mapper, reducer) {
     const workers = spawn(worker, [
         CORES,
+        empty,
         {
             encoded: [...new TextEncoder().encode(delimiter)],
             decoded: delimiter,
@@ -103,6 +111,8 @@ export default function main(delimiter, mapper, reducer) {
 
     return async payload => {
         const data = encode(payload);
-        return (await dispatch(workers, data)).reduce(reducer);
+        return (await dispatch(workers, data))
+            .filter(item => item !== empty)
+            .reduce(reducer);
     };
 }
