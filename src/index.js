@@ -47,11 +47,7 @@ function worker(workerId, workerCount, delimiter, mapper, reducer) {
     const reduce = new Function(`return ${reducer}`)();
 
     self.addEventListener('message', ({ data }) => {
-        const { chunkStart, chunkEnd } = getChunks(data);
-
-        const collection = new TextDecoder()
-            .decode(data.slice(chunkStart, chunkEnd))
-            .split(delimiter.decoded);
+        const collection = getChunk(data).split(delimiter.decoded);
 
         const result = collection
             .slice(1)
@@ -60,33 +56,47 @@ function worker(workerId, workerCount, delimiter, mapper, reducer) {
         self.postMessage(result);
     });
 
-    function findOffset(data, chunkIndex) {
-        const offset = data
-            .slice(chunkIndex)
-            .findIndex(value => value === delimiter.encoded);
-        return offset === -1 ? 0 : offset;
+    function getDelimiterIndex(data) {
+        return data.findIndex((_, index) => {
+            return delimiter.encoded.every(delimiter => {
+                return data[index] === delimiter;
+            });
+        });
     }
 
-    function getChunks(data) {
+    function getChunk(data) {
         const chunkSize = Math.round(data.length / workerCount);
         const chunkStart = workerId * chunkSize;
         const chunkEnd = (workerId + 1) * chunkSize;
 
-        const startOffset =
-            chunkStart === 0 ? 0 : findOffset(data, chunkStart) + 1;
-        const endOffset = findOffset(data, chunkEnd);
-
-        return {
-            chunkStart: chunkStart + startOffset,
-            chunkEnd: chunkEnd + endOffset,
+        const chunkOffsets = {
+            start:
+                chunkStart === 0
+                    ? 0
+                    : getDelimiterIndex(data.slice(chunkStart)) +
+                      delimiter.encoded.length,
+            end:
+                chunkEnd === data.length
+                    ? 0
+                    : getDelimiterIndex(data.slice(chunkEnd)),
         };
+
+        return new TextDecoder().decode(
+            data.slice(
+                chunkStart + chunkOffsets.start,
+                chunkEnd + chunkOffsets.end,
+            ),
+        );
     }
 }
 
 export default function main(delimiter, mapper, reducer) {
     const workers = spawn(worker, [
         CORES,
-        { encoded: new TextEncoder().encode(delimiter)[0], decoded: delimiter },
+        {
+            encoded: [...new TextEncoder().encode(delimiter)],
+            decoded: delimiter,
+        },
         mapper.toString(),
         reducer.toString(),
     ]);

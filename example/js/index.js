@@ -8,13 +8,15 @@ import maducer from 'maducer';
 async function main() {
     const mapper = a => Number(a);
     const reducer = (a, b) => (a > b ? a : b);
-    const compute = maducer(',', mapper, reducer);
+    const delimiter = ',';
+
+    const compute = maducer(delimiter, mapper, reducer);
     const data = await fetch('./data/dataset.csv').then(r => r.text());
 
     console.log(`running standard...`);
     console.time('standard');
     const result = data
-        .split(',')
+        .split(delimiter)
         .map(mapper)
         .reduce(reducer);
     console.timeEnd('standard');
