@@ -40,3 +40,5 @@ console.log('Highest value is:', result);
 ```
 
 Maducer will distribute the concurrent map-reduce computation across *x* [web workers](https://developer.mozilla.org/en-US/docs/Web/API/Web_Workers_API/Using_web_workers) using [`SharedArrayBuffer`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/SharedArrayBuffer) where *x* is the amount of CPU cores available to the client.
+
+It's also possible to pass an `ArrayBuffer` to Maducer &ndash; you'll still get the decoded value in your map and reduce functions, but there is a performance gain in using a buffer as opposed to plain text &ndash; using `fetch` you can yield a buffer by using `response.arrayBuffer()`.
