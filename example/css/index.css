@@ -13,6 +13,13 @@ html {
     text-align: center;
 }
 
+body {
+    display: grid;
+    grid-auto-flow: row;
+    grid-gap: 10px;
+    justify-items: center;
+}
+
 img {
     width: 25vmin;
     margin-bottom: 2vmin;
@@ -27,4 +34,8 @@ p {
 
 strong {
     font-family: monospace;
+}
+
+div {
+
 }
